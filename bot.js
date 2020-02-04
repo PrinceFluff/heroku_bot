@@ -1,12 +1,11 @@
-// npm install get-file
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const get = require('get-file');
+const fs = require('fs');
 
 var Data = {};
 
 client.on("ready", () => {
-  console.log(`Logged in as ${client.user.tag}!`);
   // initialize
   console.log('RorgBot Initialized');
 
@@ -15,36 +14,41 @@ client.on("ready", () => {
   // fetch data from github
   get('prodzpod/-RorgMod', 'README.md', function(err, res) {
     if (err) return console.error(err);
-    res.on('data', (d) => {
-      rawData += d.toString()
+    res.on('data',function(data){
+      rawData += data.toString();
     });
-    res.on('close', function() { 
+    
+    res.on('end',function(){
+        // swap github "image" with discord emotes
+        rawData = rawData.replace(/!\[Energy\]\(http:\/\/tinyurl\.com\/IroncladEnergy\)/g, "<:red_energy:669488816142155800>");
+        rawData = rawData.replace(/!\[Energy\]\(http:\/\/tinyurl\.com\/SilentsEnergy\)/g, "<:green_energy:669488892998844437>");
+        rawData = rawData.replace(/!\[Energy\]\(http:\/\/tinyurl\.com\/DefectEnergy\)/g, "<:blue_energy:669488945997938688>");
+        rawData = rawData.replace(/!\[Energy\]\(http:\/\/tinyurl\.com\/WatcherEnergy\)/g, "<:purple_energy:669489067439947776>");
+        rawData = rawData.replace(/!\[Energy\]\(http:\/\/tinyurl\.com\/ColorlessEnergy\)/g, "<:colorless_energy:669489128651358208>");
 
+        let match;
+
+        // get Cards
+        myRegexp = new RegExp(/\* \*\*([^*]+)\*\* \(([^,]+), ([^(),]+), ([^(),]+), ([^(),]+)\)(.+)?\n  \* (.+)/g);
+
+        match = myRegexp.exec(rawData);
+        while (match != null) {
+          console.log("Detected Card", match[1]);
+          Data[match[1]] = '**' + match[1] + '**\n' + match[2] + ' `' + match[3] + '` `' + match[4] + '` `' + match[5] + '`' + (match[6] ? match[6] : '') + '\n' + match[7]
+          match = myRegexp.exec(rawData);
+        }
+
+        // get Relics
+        myRegexp = new RegExp(/\* \*\*([^*]+)\*\* \(([^(),]+), ([^(),]+)\)(.+)?\n  \* (.+)/g);
+
+        match = myRegexp.exec(rawData);
+        while (match != null) {
+          console.log("Detected Relic", match[1]);
+          Data[match[1]] = '**' + match[1] + '**\n`' + match[2] + '` `' + match[3] + '`' + (match[4] ? match[4] : '') + '\n' + match[5]
+          match = myRegexp.exec(rawData);
+        }
     });
   });
-
-  // swap github "image" with discord emotes
-  rawData.replace(/\!\[Energy\]\(http:\/\/tinyurl\.com\/IroncladEnergy\)/g, "<:red_energy:669488816142155800>")
-  rawData.replace(/\!\[Energy\]\(http:\/\/tinyurl\.com\/SilentsEnergy\)/g, "<:green_energy:669488892998844437>")
-  rawData.replace(/\!\[Energy\]\(http:\/\/tinyurl\.com\/DefectEnergy\)/g, "<:blue_energy:669488945997938688>")
-  rawData.replace(/\!\[Energy\]\(http:\/\/tinyurl\.com\/WatcherEnergy\)/g, "<:purple_energy:669489067439947776>")
-  rawData.replace(/\!\[Energy\]\(http:\/\/tinyurl\.com\/ColorlessEnergy\)/g, "<:colorless_energy:669489128651358208>")
-
-  let match;
-
-  // get Cards
-  match = /\* \*\*(.+)\*\* \((.+), (.+), (.+), (.+)\)( \*\*\(.+\)\*\*)?\n  \* (.+)/g.exec(rawData);
-  while (match != null) {
-    Data[match[1]] = '**' + match[1] + '**\n' + match[2] + ' `' + match[3] + '` `' + match[4] + '` `' + match[5] + '`' + (match[6] || match[6].length ? ' **' + match[6] + '**' : '') + '\n' + match[6]
-    match = myRegexp.exec(rawData);
-  }
-
-  // get Relics
-  match = /\* \*\*(.+)\*\* \((.+), (.+), (.+), (.+)\)( \*\*\(.+\)\*\*)?\n  \* (.+)/g.exec(rawData);
-  while (match != null) {
-    Data[match[1]] = '**' + match[1] + '**\n`' + match[2] + '` `' + match[3] + '`' + (match[4] || match[4].length ? ' ' + match[4] : '') + '\n' + match[5]
-    match = myRegexp.exec(rawData);
-  }
 })
 
 client.on("message", message => {
@@ -69,11 +73,16 @@ client.on("message", message => {
     else if (List.length == 1) // Only 1 thing found
       message.channel.send(Data[List[0]]) // send that
     else if (List.length <= 5) // 5 is arbiturary
-      message.channel.send("We found multiple card/relic related to that name. Try: \n**" + List.join("**\n **") + "**")
+      message.channel.send("We found multiple card/relic related to that name. Try: \n**" + List.join("**\n**") + "**")
     else 
       message.channel.send("We found too many card/relics with that search term. Try putting in more letters.")
   }
 });
+
+client.on("error", (e) => console.error(e));
+client.on("warn", (e) => console.warn(e));
+client.on("debug", (e) => console.info(e));
+
 
 client.login(process.env.BOT_TOKEN);
 
